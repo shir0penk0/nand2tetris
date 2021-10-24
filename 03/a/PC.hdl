@@ -16,5 +16,15 @@ CHIP PC {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    // if (inc[t] == 1) out[t+1] = out[t] + 1 else out[t+1] = out[t]
+    ALU(x=regval, y=false, zx=false, nx=true, zy=true, ny=true, f=true, no=true, out=io);
+    Mux16(a=regval, b=io, sel=inc, out=incout);    
+
+    // if (load[t] == 1)  out[t+1] = in[t]
+    Mux16(a=incout, b=in, sel=load, out=loadout);
+
+    // if (reset[t] == 1) out[t+1] = 0
+    ALU(x=loadout, y=false, zx=reset, nx=false, zy=false, ny=false, f=true, no=false, out=resetout);
+
+    Register(in=resetout, load=true, out=out, out=regval);
 }
