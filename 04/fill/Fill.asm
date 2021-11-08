@@ -12,10 +12,16 @@
 // the screen should remain fully clear as long as no key is pressed.
 
 // Put your code here.
+  // If screen has already been filled or cleared, skip writting to the memory of screen.
+  @is_filled
+  M=0
+  // Initialize screen to blank
+  @CLEAR
+  0;JMP
 
 (LOOP)
 
-  // Get pressed key
+  // Get the pressed key
   @KBD
   D=M
   
@@ -31,6 +37,12 @@
   M=0
   
 (FILL_LOOP)
+  // if (is_filled > 0) then goto LOOP
+  @is_filled
+  D=M
+  @LOOP
+  D;JGT
+
   // Fill Memory[SCREEN + i]
   @i
   D=M
@@ -50,6 +62,10 @@
   @FILL_LOOP
   D;JLT
 
+  // Completed FILL
+  @is_filled
+  M=1
+
   @LOOP
   0;JMP
 
@@ -59,12 +75,18 @@
   M=0
   
 (CLEAR_LOOP)
+
+  @is_filled
+  D=M
+  @LOOP
+  D;JEQ
+
   @i
   D=M
   @SCREEN
   A=D+A
   M=0
-  
+
   @i
   MD=M+1
 
@@ -74,5 +96,8 @@
   @CLEAR_LOOP
   D;JLT
 
+  @is_filled
+  M=0
+ 
   @LOOP
   0;JMP
