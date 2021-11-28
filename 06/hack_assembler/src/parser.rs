@@ -1,0 +1,157 @@
+use regex::Regex;
+use std::collections::VecDeque;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum CommandType {
+    None,
+    ACommand,
+    CCommand,
+    LCommand,
+}
+
+#[derive(Debug)]
+pub struct Parser {
+    line_vec: VecDeque<String>,
+    current_line: String,
+    command: Command,
+}
+
+impl Parser {
+    pub fn new(path: &str) -> Parser {
+        let f = File::open(path).expect("file not found");
+        let reader = BufReader::new(f);
+
+        let mut p = Parser {
+            line_vec: VecDeque::new(),
+            current_line: "".to_string(),
+            command: Command::new(""),
+        };
+        for line in reader.lines() {
+            let l = line.unwrap();
+
+            // Skip an empty line
+            if l.is_empty() {
+                continue;
+            }
+
+            // Skip a comment line
+            let re = Regex::new(r"//.*").unwrap();
+            if re.is_match(&l) {
+                continue;
+            }
+
+            p.line_vec.push_back(l);
+        }
+        p
+    }
+
+    pub fn has_more_commands(&self) -> bool {
+        self.line_vec.is_empty() == false
+    }
+
+    pub fn advance(mut self) -> Parser {
+        if self.has_more_commands() {
+            let l = self.line_vec.pop_front();
+            self.current_line = l.unwrap();
+            self.command = Command::new(&self.current_line)
+        }
+        self
+    }
+
+    pub fn command_type(&self) -> CommandType {
+        self.command.cmd_type
+    }
+
+    pub fn symbol(&self) -> &str {
+        &self.command.symbol
+    }
+
+    pub fn dest(&self) -> &str {
+        &self.command.dest
+    }
+
+    pub fn comp(&self) -> &str {
+        &self.command.comp
+    }
+
+    pub fn jump(&self) -> &str {
+        &self.command.jump
+    }
+}
+
+#[derive(Debug)]
+struct Command {
+    cmd_type: CommandType,
+    symbol: String,
+    dest: String,
+    comp: String,
+    jump: String,
+}
+
+impl Command {
+    fn new(current_line: &str) -> Command {
+        if current_line.is_empty() {
+            return Command {
+                cmd_type: CommandType::None,
+                symbol: "".to_string(),
+                dest: "".to_string(),
+                comp: "".to_string(),
+                jump: "".to_string(),
+            };
+        }
+
+        let re_a_cmd = Regex::new(r"^(?:\s*@([\w]+))\s*(?://.*)*$").unwrap();
+        if re_a_cmd.is_match(current_line) {
+            let cap = re_a_cmd.captures(current_line).unwrap();
+            let symbol = cap.get(1).unwrap().as_str();
+            return Command {
+                cmd_type: CommandType::ACommand,
+                symbol: symbol.to_string(),
+                dest: "".to_string(),
+                comp: "".to_string(),
+                jump: "".to_string(),
+            };
+        }
+
+        let re_c_cmd = Regex::new(r"^(?:\s*(M|D|MD|A|AM|AD|AMD)=){0,1}((?:0|1|-1|D|A|!D|!A|-D|-A|D\+1|A\+1|D-1|A-1|D\+A|D-A|A-D|D\&A|D\|A|M|!M|-M|M\+1|M-1|D\+M|D-M|M-D|D\&M|D\|M){1})(?:;(JGT|JEQ|JGE|JLT|JNE|JLE|JMP)){0,1}\s*(?://.*)*$").unwrap();
+        if re_c_cmd.is_match(current_line) {
+            let cap = re_c_cmd.captures(current_line).unwrap();
+            let dest = match cap.get(1) {
+                Some(dest) => dest.as_str(),
+                None => "null",
+            };
+
+            let comp = cap.get(2).unwrap().as_str();
+
+            let jump = match cap.get(3) {
+                Some(jump) => jump.as_str(),
+                None => "null",
+            };
+
+            return Command {
+                cmd_type: CommandType::CCommand,
+                symbol: "".to_string(),
+                dest: dest.to_string(),
+                comp: comp.to_string(),
+                jump: jump.to_string(),
+            };
+        }
+
+        let re_l_cmd = Regex::new(r"^\s*\(([\w]+)\)\s*(?://.*)*$").unwrap();
+        if re_l_cmd.is_match(current_line) {
+            let cap = re_l_cmd.captures(current_line).unwrap();
+            let symbol = cap.get(1).unwrap().as_str();
+            return Command {
+                cmd_type: CommandType::LCommand,
+                symbol: symbol.to_string(),
+                dest: "".to_string(),
+                comp: "".to_string(),
+                jump: "".to_string(),
+            };
+        }
+
+        panic!("Invalid command");
+    }
+}
