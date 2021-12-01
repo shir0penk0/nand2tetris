@@ -18,11 +18,6 @@ fn main() {
         }
         parser = parser.advance();
         println!("{:#?}", parser);
-        println!("{:#?}", parser.command_type());
-        println!("symbol:{}", parser.symbol());
-        println!("dest:{}", parser.dest());
-        println!("comp:{}", parser.comp());
-        println!("jump:{}", parser.jump());
         println!("------------------");
     }
 

@@ -1,11 +1,10 @@
 use regex::Regex;
 use std::collections::VecDeque;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{self, BufRead, BufReader};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum CommandType {
-    None,
     ACommand,
     CCommand,
     LCommand,
@@ -15,7 +14,7 @@ pub enum CommandType {
 pub struct Parser {
     line_vec: VecDeque<String>,
     current_line: String,
-    command: Command,
+    command: Option<Command>,
 }
 
 impl Parser {
@@ -26,7 +25,7 @@ impl Parser {
         let mut p = Parser {
             line_vec: VecDeque::new(),
             current_line: "".to_string(),
-            command: Command::new(""),
+            command: None,
         };
         for line in reader.lines() {
             let l = line.unwrap();
@@ -55,29 +54,47 @@ impl Parser {
         if self.has_more_commands() {
             let l = self.line_vec.pop_front();
             self.current_line = l.unwrap();
-            self.command = Command::new(&self.current_line)
+            self.command = Some(Command::new(&self.current_line).unwrap());
         }
         self
     }
 
-    pub fn command_type(&self) -> CommandType {
-        self.command.cmd_type
+    pub fn command_type(&self) -> Option<CommandType> {
+        let c = self.command.as_ref();
+        Some(c?.cmd_type)
     }
 
-    pub fn symbol(&self) -> &str {
-        &self.command.symbol
+    pub fn symbol(&self) -> Option<&str> {
+        let c = self.command.as_ref();
+        match c?.cmd_type {
+            CommandType::ACommand => Some(&c?.symbol),
+            CommandType::LCommand => Some(&c?.symbol),
+            CommandType::CCommand => None,
+        }
     }
 
-    pub fn dest(&self) -> &str {
-        &self.command.dest
+    pub fn dest(&self) -> Option<&str> {
+        let c = self.command.as_ref();
+        match c?.cmd_type {
+            CommandType::CCommand => Some(&c?.dest),
+            _ => None,
+        }
     }
 
-    pub fn comp(&self) -> &str {
-        &self.command.comp
+    pub fn comp(&self) -> Option<&str> {
+        let c = self.command.as_ref();
+        match c?.cmd_type {
+            CommandType::CCommand => Some(&c?.comp),
+            _ => None,
+        }
     }
 
-    pub fn jump(&self) -> &str {
-        &self.command.jump
+    pub fn jump(&self) -> Option<&str> {
+        let c = self.command.as_ref();
+        match c?.cmd_type {
+            CommandType::CCommand => Some(&c?.jump),
+            _ => None,
+        }
     }
 }
 
@@ -91,31 +108,23 @@ struct Command {
 }
 
 impl Command {
-    fn new(current_line: &str) -> Command {
-        if current_line.is_empty() {
-            return Command {
-                cmd_type: CommandType::None,
-                symbol: "".to_string(),
-                dest: "".to_string(),
-                comp: "".to_string(),
-                jump: "".to_string(),
-            };
-        }
-
-        let re_a_cmd = Regex::new(r"^(?:\s*@([\w]+))\s*(?://.*)*$").unwrap();
+    fn new(current_line: &str) -> Result<Command, io::Error> {
+        // Return a type A command object if the current line matches type A command syntax
+        let re_a_cmd = Regex::new(r"^\s*(?:@([\w_\.\$:]+))\s*(?://.*)*$").unwrap();
         if re_a_cmd.is_match(current_line) {
             let cap = re_a_cmd.captures(current_line).unwrap();
             let symbol = cap.get(1).unwrap().as_str();
-            return Command {
+            return Ok(Command {
                 cmd_type: CommandType::ACommand,
                 symbol: symbol.to_string(),
                 dest: "".to_string(),
                 comp: "".to_string(),
                 jump: "".to_string(),
-            };
+            });
         }
 
-        let re_c_cmd = Regex::new(r"^(?:\s*(M|D|MD|A|AM|AD|AMD)=){0,1}((?:0|1|-1|D|A|!D|!A|-D|-A|D\+1|A\+1|D-1|A-1|D\+A|D-A|A-D|D\&A|D\|A|M|!M|-M|M\+1|M-1|D\+M|D-M|M-D|D\&M|D\|M){1})(?:;(JGT|JEQ|JGE|JLT|JNE|JLE|JMP)){0,1}\s*(?://.*)*$").unwrap();
+        // Return a type C command object if the current line matches type C command syntax
+        let re_c_cmd = Regex::new(r"^\s*(?:(M|D|MD|A|AM|AD|AMD)=){0,1}((?:0|1|-1|D|A|!D|!A|-D|-A|D\+1|A\+1|D-1|A-1|D\+A|D-A|A-D|D\&A|D\|A|M|!M|-M|M\+1|M-1|D\+M|D-M|M-D|D\&M|D\|M){1})(?:;(JGT|JEQ|JGE|JLT|JNE|JLE|JMP)){0,1}\s*(?://.*)*$").unwrap();
         if re_c_cmd.is_match(current_line) {
             let cap = re_c_cmd.captures(current_line).unwrap();
             let dest = match cap.get(1) {
@@ -130,28 +139,29 @@ impl Command {
                 None => "null",
             };
 
-            return Command {
+            return Ok(Command {
                 cmd_type: CommandType::CCommand,
                 symbol: "".to_string(),
                 dest: dest.to_string(),
                 comp: comp.to_string(),
                 jump: jump.to_string(),
-            };
+            });
         }
 
-        let re_l_cmd = Regex::new(r"^\s*\(([\w]+)\)\s*(?://.*)*$").unwrap();
+        // Return a type L command object if the current line matches type L command syntax
+        let re_l_cmd = Regex::new(r"^\s*\(([\w_\.\$:]+)\)\s*(?://.*)*$").unwrap();
         if re_l_cmd.is_match(current_line) {
             let cap = re_l_cmd.captures(current_line).unwrap();
             let symbol = cap.get(1).unwrap().as_str();
-            return Command {
+            return Ok(Command {
                 cmd_type: CommandType::LCommand,
                 symbol: symbol.to_string(),
                 dest: "".to_string(),
                 comp: "".to_string(),
                 jump: "".to_string(),
-            };
+            });
         }
 
-        panic!("Invalid command");
+        panic!("Invalid command: {}", current_line);
     }
 }
