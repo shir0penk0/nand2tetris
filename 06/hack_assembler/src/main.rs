@@ -1,6 +1,7 @@
-pub mod parser;
+mod parser;
+mod code;
 use crate::parser::*;
-
+use crate::code::*;
 use std::env;
 
 fn main() {
