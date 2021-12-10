@@ -36,7 +36,7 @@ impl Parser {
             }
 
             // Skip a comment line
-            let re = Regex::new(r"//.*").unwrap();
+            let re = Regex::new(r"^//.*$").unwrap();
             if re.is_match(&l) {
                 continue;
             }
