@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{Write, BufWriter};
+use regex::Regex; 
 mod code;
 mod parser;
 use crate::code::*;
@@ -15,7 +16,12 @@ fn main() {
     // println!("{:#?}", parser);
     // println!("------------------");
 
-    let mut writer = BufWriter::new(File::create("./aaa.hack").unwrap());
+
+    let re = Regex::new(r"^(?:.*/)*(.+)\.asm$").unwrap();
+    let cap = re.captures(filepath).unwrap();
+    let output_name= format!("{}.hack",cap.get(1).unwrap().as_str());
+
+    let mut writer = BufWriter::new(File::create(output_name).unwrap());
 
     loop {
         if parser.has_more_commands() == false {
@@ -27,7 +33,7 @@ fn main() {
 
         if cmd_type == CommandType::ACommand {
             let symbol: i32 = parser.symbol().unwrap().parse().unwrap();
-            output_bin = format!("0{:0>15b}\n", symbol);
+            output_bin = format!("0{:>015b}\n", symbol);
         } else if cmd_type == CommandType::CCommand {
             let dest = Code::dest(parser.dest().unwrap());
             let comp = Code::comp(parser.comp().unwrap());
