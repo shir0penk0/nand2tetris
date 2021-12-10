@@ -27,7 +27,7 @@ fn main() {
 
         if cmd_type == CommandType::ACommand {
             let symbol: i32 = parser.symbol().unwrap().parse().unwrap();
-            output_bin = format!("0{:b>015}\n", symbol);
+            output_bin = format!("0{:0>15b}\n", symbol);
         } else if cmd_type == CommandType::CCommand {
             let dest = Code::dest(parser.dest().unwrap());
             let comp = Code::comp(parser.comp().unwrap());
