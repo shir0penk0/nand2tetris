@@ -23,7 +23,7 @@ fn main() {
             if parser.has_more_commands() == false {
                 break;
             }
-            parser = parser.advance();
+            parser.advance();
             let cmd_type = parser.command_type().unwrap();
             match cmd_type {
                 CommandType::ACommand => rom_address += 1,
@@ -49,7 +49,7 @@ fn main() {
         if parser.has_more_commands() == false {
             break;
         }
-        parser = parser.advance();
+        parser.advance();
         let cmd_type = parser.command_type().unwrap();
         let output_bin;
 

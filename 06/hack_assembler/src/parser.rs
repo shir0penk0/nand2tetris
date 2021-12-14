@@ -1,5 +1,4 @@
 use regex::Regex;
-use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 
@@ -12,8 +11,8 @@ pub enum CommandType {
 
 #[derive(Debug)]
 pub struct Parser {
-    line_vec: VecDeque<String>,
-    current_line: String,
+    line_vec: Vec<String>,
+    line_cnt: usize,
     command: Option<Command>,
 }
 
@@ -23,8 +22,8 @@ impl Parser {
         let reader = BufReader::new(f);
 
         let mut p = Parser {
-            line_vec: VecDeque::new(),
-            current_line: "".to_string(),
+            line_vec: Vec::new(),
+            line_cnt: 0,
             command: None,
         };
         for line in reader.lines() {
@@ -41,22 +40,21 @@ impl Parser {
                 continue;
             }
 
-            p.line_vec.push_back(l);
+            p.line_vec.push(l);
         }
         p
     }
 
     pub fn has_more_commands(&self) -> bool {
-        self.line_vec.is_empty() == false
+        // self.line_vec.is_empty() == false
+        self.line_cnt < self.line_vec.len()
     }
 
-    pub fn advance(mut self) -> Parser {
+    pub fn advance(&mut self) {
         if self.has_more_commands() {
-            let l = self.line_vec.pop_front();
-            self.current_line = l.unwrap();
-            self.command = Some(Command::new(&self.current_line).unwrap());
+            self.line_cnt += 1;
+            self.command = Some(Command::new(&self.line_vec[self.line_cnt-1][..]).unwrap());
         }
-        self
     }
 
     pub fn command_type(&self) -> Option<CommandType> {
